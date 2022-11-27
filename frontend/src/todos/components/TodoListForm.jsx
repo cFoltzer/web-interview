@@ -1,14 +1,73 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { TextField, Card, CardContent, CardActions, Button, Typography } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 
-export const TodoListForm = ({ todoList, saveTodoList }) => {
+const url = 'http://localhost:3001';
+
+export const TodoListForm = ({ todoList, saveTodoList, setRefreshList }) => {
   const [todos, setTodos] = useState(todoList.todos)
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    saveTodoList(todoList.id, { todos })
+  const timeout = useRef();
+  
+  const saveChanges = (index) => {
+    clearTimeout(timeout.current);
+
+    timeout.current = setTimeout(() => {
+      const requestOptions = {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(todos[index])
+      };
+      return fetch(`${url}/todos/${todos[index].id}/update`, requestOptions)
+        .then(async response => {
+          console.log(response)
+          if (response.status === 200) {
+            saveTodoList(todoList.id, { todos });
+          }
+        })
+        .catch((e) => {
+          console.error(`An error occured: ${e}`)
+        });
+    }, 500);
+  }
+
+  const addItem = () => {
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    }
+    return fetch(`${url}/lists/${todoList.id}/add`, requestOptions)
+      .then(response => response.json())
+      .then(response => {
+        setTodos([...response]);
+      })
+      .catch((e) => {
+        console.error(`An error occured: ${e}`)
+      });
+  }
+
+  const deleteItem = (todoItem, index) => {
+    const requestOptions = {
+        method: 'DELETE'
+    };
+    return fetch(`${url}/todos/${todoItem.id}/delete`, requestOptions)
+      .then(async response => {
+        if (response.status === 200) {
+          setTodos([
+            // immutable delete
+            ...todos.slice(0, index),
+            ...todos.slice(index + 1),
+          ])
+          saveTodoList(todoList.id, { todos });
+        }
+      })
+      .catch((e) => {
+        console.error(`An error occured: ${e}`)
+      });
   }
 
   return (
@@ -16,10 +75,9 @@ export const TodoListForm = ({ todoList, saveTodoList }) => {
       <CardContent>
         <Typography component='h2'>{todoList.title}</Typography>
         <form
-          onSubmit={handleSubmit}
           style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}
         >
-          {todos.map((name, index) => (
+          {todos.map((todo, index) => (
             <div key={index} style={{ display: 'flex', alignItems: 'center' }}>
               <Typography sx={{ margin: '8px' }} variant='h6'>
                 {index + 1}
@@ -27,14 +85,17 @@ export const TodoListForm = ({ todoList, saveTodoList }) => {
               <TextField
                 sx={{ flexGrow: 1, marginTop: '1rem' }}
                 label='What to do?'
-                value={name}
+                value={todo.title}
                 onChange={(event) => {
+                  let updatedTodo = todo;
+                  updatedTodo.title = event.target.value;
                   setTodos([
                     // immutable update
                     ...todos.slice(0, index),
-                    event.target.value,
+                    updatedTodo,
                     ...todos.slice(index + 1),
                   ])
+                  saveChanges(index);
                 }}
               />
               <Button
@@ -42,11 +103,7 @@ export const TodoListForm = ({ todoList, saveTodoList }) => {
                 size='small'
                 color='secondary'
                 onClick={() => {
-                  setTodos([
-                    // immutable delete
-                    ...todos.slice(0, index),
-                    ...todos.slice(index + 1),
-                  ])
+                  deleteItem(todo, index);
                 }}
               >
                 <DeleteIcon />
@@ -58,13 +115,10 @@ export const TodoListForm = ({ todoList, saveTodoList }) => {
               type='button'
               color='primary'
               onClick={() => {
-                setTodos([...todos, ''])
+                addItem();
               }}
             >
               Add Todo <AddIcon />
-            </Button>
-            <Button type='submit' variant='contained' color='primary'>
-              Save
             </Button>
           </CardActions>
         </form>

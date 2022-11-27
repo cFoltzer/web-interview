@@ -11,35 +11,43 @@ import {
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import { TodoListForm } from './TodoListForm'
 
-// Simulate network
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const url = 'http://localhost:3001';
 
 const fetchTodoLists = () => {
-  return sleep(1000).then(() =>
-    Promise.resolve({
-      '0000000001': {
-        id: '0000000001',
-        title: 'First List',
-        todos: ['First todo of first list!'],
-      },
-      '0000000002': {
-        id: '0000000002',
-        title: 'Second List',
-        todos: ['First todo of second list!'],
-      },
-    })
-  )
+  return fetch(`${url}/lists`)
+    .then(response => response.json())
+    .catch((e) => {
+      console.error(`An error occured: ${e}`)
+    });
 }
 
 export const TodoLists = ({ style }) => {
   const [todoLists, setTodoLists] = useState({})
   const [activeList, setActiveList] = useState()
 
+  const fetchTodos = (index) => {
+    let id = todoLists[index].id;
+    return fetch(`${url}/lists/${id}/todos`)
+      .then(response => response.json())
+      .then(
+        (response) => {
+          todoLists[index].todos = response;
+          setActiveList(index);
+        }, 
+        (error) => {
+          console.error(`An error occured: ${error}`);
+        })
+      .catch((e) => {
+        console.error(`An error occured: ${e}`);
+      });
+  }
+
   useEffect(() => {
     fetchTodoLists().then(setTodoLists)
   }, [])
 
   if (!Object.keys(todoLists).length) return null
+  // Add error component showing a message if there is an error
   return (
     <Fragment>
       <Card style={style}>
@@ -47,7 +55,7 @@ export const TodoLists = ({ style }) => {
           <Typography component='h2'>My Todo Lists</Typography>
           <List>
             {Object.keys(todoLists).map((key) => (
-              <ListItem key={key} button onClick={() => setActiveList(key)}>
+              <ListItem key={key} button onClick={() => fetchTodos(key)}>
                 <ListItemIcon>
                   <ReceiptIcon />
                 </ListItemIcon>
@@ -68,6 +76,7 @@ export const TodoLists = ({ style }) => {
               [id]: { ...listToUpdate, todos },
             })
           }}
+          setRefreshList={() => {fetchTodos(activeList)}}
         />
       )}
     </Fragment>
