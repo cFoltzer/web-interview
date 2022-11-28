@@ -5,31 +5,47 @@ import AddIcon from '@mui/icons-material/Add'
 
 const url = 'http://localhost:3001';
 
-export const TodoListForm = ({ todoList, saveTodoList, setRefreshList }) => {
+export const TodoListForm = ({ todoList, saveTodoList }) => {
   const [todos, setTodos] = useState(todoList.todos)
 
   const timeout = useRef();
   
-  const saveChanges = (index) => {
+  const saveChanges = (todo) => {
     clearTimeout(timeout.current);
 
     timeout.current = setTimeout(() => {
       const requestOptions = {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(todos[index])
+          body: JSON.stringify(todo)
       };
-      return fetch(`${url}/todos/${todos[index].id}/update`, requestOptions)
+      return fetch(`${url}/todos/${todo.id}/update`, requestOptions)
         .then(async response => {
-          console.log(response)
           if (response.status === 200) {
-            saveTodoList(todoList.id, { todos });
+            saveTodoList({ todos });
           }
         })
         .catch((e) => {
           console.error(`An error occured: ${e}`)
         });
     }, 500);
+  }
+
+  const updateCompleted = (todo) => {
+    const requestOptions = {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(todo)
+    };
+    return fetch(`${url}/todos/${todo.id}/complete`, requestOptions)
+      .then(async response => {
+        if (response.status === 200) {
+          saveTodoList({ todos });
+        }
+      })
+      .catch((e) => {
+        console.error(`An error occured: ${e}`)
+      });
   }
 
   const addItem = () => {
@@ -62,7 +78,7 @@ export const TodoListForm = ({ todoList, saveTodoList, setRefreshList }) => {
             ...todos.slice(0, index),
             ...todos.slice(index + 1),
           ])
-          saveTodoList(todoList.id, { todos });
+          saveTodoList({ todos });
         }
       })
       .catch((e) => {
@@ -95,13 +111,26 @@ export const TodoListForm = ({ todoList, saveTodoList, setRefreshList }) => {
                     updatedTodo,
                     ...todos.slice(index + 1),
                   ])
-                  saveChanges(index);
+                  saveChanges(updatedTodo);
                 }}
               />
+              <input type="checkbox"
+                checked={todo.completed === 1}
+                onChange={(event) => {
+                  let updatedTodo = todo;
+                  updatedTodo.completed = event.target.checked ? 1 : 0;
+                  setTodos([
+                    // immutable update
+                    ...todos.slice(0, index),
+                    updatedTodo,
+                    ...todos.slice(index + 1),
+                  ])
+                  updateCompleted(updatedTodo);
+                }}/>
               <Button
                 sx={{ margin: '8px' }}
                 size='small'
-                color='secondary'
+                color='primary'
                 onClick={() => {
                   deleteItem(todo, index);
                 }}
