@@ -2,8 +2,7 @@ const sqlite3 = require('sqlite3');
 const db = new sqlite3.Database(':memory:');
 
 db.serialize(() => {
-    const sql = 'CREATE TABLE IF NOT EXISTS todos (id integer primary key, title, completed, list_id)';
-    db.run(sql);
+    db.run('CREATE TABLE IF NOT EXISTS todos (id integer primary key, title, completed, list_id)');
     db.run('INSERT INTO todos(title, completed, list_id) VALUES("First item of first list", false, 1)');
     db.run('INSERT INTO todos(title, completed, list_id) VALUES("First item of second list", false, 2)');
 });
@@ -22,7 +21,7 @@ class Todo {
 
     static selectTodosOfList(todoListId, callback) {
         db.all('SELECT * FROM todos WHERE list_id=' + todoListId, callback);
-    };
+    }
 
     static updateTodoTitle(todoId, title, callback) {
         const sql = 'UPDATE todos SET title = ? WHERE id = ?';
